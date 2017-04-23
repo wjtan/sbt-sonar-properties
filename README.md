@@ -1,0 +1,1 @@
+# sbt-sonar-properties
