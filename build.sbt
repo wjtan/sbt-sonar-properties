@@ -2,13 +2,11 @@ name := "sbt-sonar-properties"
 
 organization := "sg.wjtan"
 
-version := "1.0.0"
-
-scalaVersion := "2.10.6"
+version := "1.1.0"
 
 sbtPlugin := true
 
-addSbtPlugin("de.johoop" % "jacoco4sbt" % "2.2.0")
+addSbtPlugin("com.github.sbt" % "sbt-jacoco" % "3.1.0")
 
 bintrayRepository := "sbt-plugins"
 

@@ -2,8 +2,8 @@ package sg.wjtan
 
 import sbt._
 import sbt.Keys._
-import de.johoop.jacoco4sbt._
-import de.johoop.jacoco4sbt.JacocoPlugin._
+import com.github.sbt.jacoco._
+import com.github.sbt.jacoco.JacocoKeys._
 import scala.collection.immutable.Map
 import scala.language.implicitConversions
 
@@ -16,6 +16,7 @@ object SbtSonarPropertiesPlugin extends AutoPlugin {
     val generateSonarPropertiesFile = TaskKey[Unit]("generate-sonar-properties", "Generates Sonar Properties")
     val sonarExclusions = SettingKey[Seq[String]]("sonar-exclusions")
     val sonarModuleExclusions = SettingKey[Seq[String]]("sonar-module-exclusions")
+    val sonarAdditionalProperties = SettingKey[Seq[(String, String)]]("sonar-additional-properties")
   }
 
   val sonarProperties = TaskKey[Seq[(String, String)]]("sonar-properties")
@@ -29,10 +30,14 @@ object SbtSonarPropertiesPlugin extends AutoPlugin {
   lazy val defaultSettings: Seq[Setting[_]] = Seq(
     sonarExclusions := Seq(),
     sonarModuleExclusions := Seq(),
+    sonarAdditionalProperties := Seq(),
     submoduleTestProperties := submoduleSettings.value.toMap,
     submoduleITProperties := submoduleITSettings.value.toMap,
     submoduleProperties := combineProperties(submoduleTestProperties.value, submoduleITProperties.value),
-    sonarProperties := { generateSonarProperties(version.value, organization.value, name.value, submoduleProperties.value, sonarExclusions.value, sonarModuleExclusions.value) },
+    sonarProperties := {
+      generateSonarProperties(version.value, organization.value, name.value, submoduleProperties.value,
+        sonarExclusions.value, sonarModuleExclusions.value, sonarAdditionalProperties.value)
+    },
     generateSonarPropertiesFile := { writeSonarPropertiesFile(sonarProperties.value, target.value, streams.value) })
 
   override def projectSettings: Seq[Setting[_]] =
@@ -59,8 +64,8 @@ object SbtSonarProperties {
       moduleName + ".sonar.projectBaseDir" -> project.base,
       moduleName + ".sonar.sources" -> (javaSource in Compile).value,
       moduleName + ".sonar.tests" -> testDirectory,
-      moduleName + ".sonar.junit.reportsPath" -> (target in Compile).value / "test-reports",
-      moduleName + ".sonar.jacoco.reportPath" -> (jacoco.outputDirectory in jacoco.Config).value / "jacoco.exec",
+      moduleName + ".sonar.junit.reportPaths" -> (target in Compile).value / "test-reports",
+      moduleName + ".sonar.jacoco.reportPaths" -> (jacocoDataFile in Test).value,
       moduleName + ".sonar.java.binaries" -> (classDirectory in Compile).value,
       moduleName + ".sonar.java.libraries" -> (dependencyClasspath in Compile).value.map(_.data).filter(_.exists()).mkString(","),
       moduleName + ".sonar.java.test.libraries" -> (dependencyClasspath in Test).value.map(_.data).filter(_.exists()).mkString(","))
@@ -69,7 +74,7 @@ object SbtSonarProperties {
   }
 
   def submoduleITTask: Def.Initialize[Task[(String, Seq[(String, String)])]] = Def.task {
-    val project = (thisProject in itJacoco.Config).value
+    val project = (thisProject in IntegrationTest).value
     val moduleName = project.id
 
     val itDirectory = (javaSource in IntegrationTest).value
@@ -78,15 +83,16 @@ object SbtSonarProperties {
 
     val properties: Seq[(String, String)] = Seq(
       moduleName + ".sonar.tests" -> itDirectory,
-      moduleName + ".sonar.jacoco.itReportPath" -> (jacoco.outputDirectory in itJacoco.Config).value / "jacoco.exec")
+      moduleName + ".sonar.jacoco.reportPaths" -> (jacocoDataFile in IntegrationTest).value)
 
     (moduleName, properties)
   }
 
-  lazy val submoduleSettings = submoduleSettingsTask.all(ScopeFilter(inAggregates(ThisProject, includeRoot = false), inConfigurations(Compile, Test, jacoco.Config)))
-  lazy val submoduleITSettings = submoduleITTask.all(ScopeFilter(inAggregates(ThisProject, includeRoot = false), inConfigurations(IntegrationTest, itJacoco.Config)))
+  lazy val submoduleSettings = submoduleSettingsTask.all(ScopeFilter(inAggregates(ThisProject, includeRoot = false), inConfigurations(Compile, Test)))
+  lazy val submoduleITSettings = submoduleITTask.all(ScopeFilter(inAggregates(ThisProject, includeRoot = false), inConfigurations(IntegrationTest)))
 
-  def combineProperties(testProperties: Map[String, Seq[(String, String)]],
+  def combineProperties(
+    testProperties: Map[String, Seq[(String, String)]],
     itProperties: Map[String, Seq[(String, String)]]) = {
     (testProperties /: itProperties) {
       case (acc, entry) =>
@@ -104,12 +110,13 @@ object SbtSonarProperties {
           }
         }
 
-        acc + ((moduleName, accMap.toSeq))
+        val newMap = accMap.toSeq.map({ case (k, v) => (k, v.replace("\\", "\\\\")) })
+        acc + ((moduleName, newMap))
     }
   }
 
   def generateSonarProperties(verion: String, organisation: String, name: String, submoduleProperties: Map[String, Seq[(String, String)]],
-    sonarExclusions: Seq[String], sonarModuleExclusions: Seq[String]) = {
+    sonarExclusions: Seq[String], sonarModuleExclusions: Seq[String], additionalProperties: Seq[(String, String)]): Seq[(String, String)] = {
     val currentProperties = submoduleProperties.filterKeys(!sonarModuleExclusions.contains(_));
     Seq(
       "sonar.projectKey" -> "%s:%s".format(organisation, name),
@@ -117,7 +124,7 @@ object SbtSonarProperties {
       "sonar.projectVersion" -> verion,
       "sonar.sourceEncoding" -> "UTF-8",
       "sonar.modules" -> currentProperties.keys.mkString(","),
-      "sonar.exclusions" -> sonarExclusions.mkString(",")) ++ currentProperties.values.flatten
+      "sonar.exclusions" -> sonarExclusions.mkString(",")) ++ additionalProperties ++ currentProperties.values.flatten
   }
 
   def writeSonarPropertiesFile(sonarProperties: Seq[(String, String)], outputDirectory: File, streams: TaskStreams) {
