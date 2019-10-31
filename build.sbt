@@ -2,11 +2,13 @@ name := "sbt-sonar-properties"
 
 organization := "sg.wjtan"
 
-version := "1.1.2"
+version := "1.1.3"
 
 sbtPlugin := true
 
-addSbtPlugin("com.github.sbt" % "sbt-jacoco" % "3.1.0")
+resolvers += Resolver.bintrayRepo("stringbean", "sbt-plugins")
+
+addSbtPlugin("com.github.sbt" % "sbt-jacoco" % "3.2.0")
 
 bintrayRepository := "sbt-plugins"
 
