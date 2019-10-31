@@ -6,7 +6,7 @@ The plugin also generate properties to use coverage reports by [JaCoCo](http://w
 ## Installation
 Install the plugin by adding the following to `project/plugins.sbt`:
 
-    addSbtPlugin("sg.wjtan" % "sbt-sonar-properties" % "1.0.0")
+    addSbtPlugin("sg.wjtan" % "sbt-sonar-properties" % "1.x.x")
 
 And then modify your `build.sbt` to enable the SbtByteBuddy plugin:
 
@@ -60,6 +60,14 @@ sonarModuleExclusions := Seq("sub-project-name")
 ------------------
 - Update to sbt-jacoco 3.1
 - Update sonar properties for Sonar runner 6
+
+1.1.1
+------------------
+- Update to SBT 1
+
+1.1.2
+------------------
+- Update Jacoco Report Path
 
 ## License
 This project is released under terms of the [Apache 2.0](https://opensource.org/licenses/Apache-2.0).

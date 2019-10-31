@@ -65,7 +65,7 @@ object SbtSonarProperties {
       moduleName + ".sonar.sources" -> (javaSource in Compile).value,
       moduleName + ".sonar.tests" -> testDirectory,
       moduleName + ".sonar.junit.reportPaths" -> (target in Compile).value / "test-reports",
-      moduleName + ".sonar.jacoco.reportPaths" -> (jacocoDataFile in Test).value,
+      moduleName + ".sonar.coverage.jacoco.xmlReportsPath" -> (jacocoDataFile in Test).value,
       moduleName + ".sonar.java.binaries" -> (classDirectory in Compile).value,
       moduleName + ".sonar.java.libraries" -> (dependencyClasspath in Compile).value.map(_.data).filter(_.exists()).mkString(","),
       moduleName + ".sonar.java.test.libraries" -> (dependencyClasspath in Test).value.map(_.data).filter(_.exists()).mkString(","))
@@ -83,7 +83,7 @@ object SbtSonarProperties {
 
     val properties: Seq[(String, String)] = Seq(
       moduleName + ".sonar.tests" -> itDirectory,
-      moduleName + ".sonar.jacoco.reportPaths" -> (jacocoDataFile in IntegrationTest).value)
+      moduleName + ".sonar.coverage.jacoco.xmlReportsPath" -> (jacocoDataFile in IntegrationTest).value)
 
     (moduleName, properties)
   }
